@@ -1,0 +1,30 @@
+{
+  "name": "triangulator2",
+  "version": "1.0.0",
+  "description": "SVG triangle art generator",
+  "main": "src/triangulator.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jackw01/triangulator2.git"
+  },
+  "author": "jackw01",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jackw01/triangulator2/issues"
+  },
+  "homepage": "https://github.com/jackw01/triangulator2#readme",
+  "dependencies": {
+    "chroma-js": "^2.0.3",
+    "delaunator": "^3.0.2",
+    "svg.js": "^2.7.1",
+    "yargs": "^13.2.2"
+  },
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-airbnb-base": "^13.1.0",
+    "eslint-plugin-import": "^2.17.2"
+  }
+}

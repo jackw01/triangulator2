@@ -3,18 +3,14 @@
 
 const yargs = require('yargs');
 const svg = require('svg.js');
+const delaunator = require('delaunator');
 const chroma = require('chroma-js')
-const perlin = require('perlin.js');
+const perlin = require('./perlin.js');
 
 // Utility stuff
 // Map value
 function map(x, inMin, inMax, outMin, outMax) {
   return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
-}
-
-// Random int
-function randomInt(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 // Finds the centroid of a group of points
@@ -30,16 +26,46 @@ const triangulator = {};
 
 triangulator.generate = function generate(input) {
   const options = input || {
-    cellSize = 35,
-    randomness = 0.075,
-    colorMode = 1,
-    noiseScale = { x: 1, y: 1 },
-    colorRandomness = 20,
-    overscan = 10,
-    colors = [chroma("#efee69").hsl(), chroma("#21313e").hsl()],
+    width: 1920,
+    height: 1080,
+    useSquareGrid: true,
+    cellSize: 35,
+    cellRandomness: 0.075,
+    color: (x, y) => y,
+    colorRandomness: 20,
+    overscan: 10,
+    colorPalette: ['#efee69', '#21313e'],
   };
 
-  
+  // Generate points
+  const points = [];
+  const cellRandomnessLimit = options.cellRandomness * options.cellSize;
+  for (let x = -options.overscan;
+       x < options.width + options.overscan + options.cellSize;
+       x += options.cellSize) {
+    for (let y = -options.overscan;
+         y < options.height + options.overscan + options.cellSize;
+         y += options.cellSize) {
+      points.push([
+        x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+        y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+      ]);
+    }
+  }
+
+  // Triangulate
+  const delaunay = delaunator.from(points);
+  const trianglePoints = [];
+  for (let i = 0; i < delaunay.triangles.length; i += 3) {
+    trianglePoints.push([
+      points[delaunay.triangles[i]], points[delaunay.triangles[i + 1]],  points[delaunay.triangles[i + 2]],
+    ]);
+  }
+  console.log(trianglePoints);
+
+  // Convert input colors to chroma.js scale
+  const scale = chroma.scale(options.colorPalette.map(chroma)).mode('hcl');
+  console.log(scale(0));
 }
 
 // Run the bot automatically if module is run instead of imported
@@ -57,4 +83,5 @@ if (!module.parent) {
     .epilog('Liora Discord bot copyright 2018 jackw01. Released under the MIT license.')
     .argv;
 
+  triangulator.generate();
 }

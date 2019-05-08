@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "SVG triangle art generator",
   "main": "src/triangulator.js",
+  "bin": {
+    "triangulator2": "src/triangulator.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

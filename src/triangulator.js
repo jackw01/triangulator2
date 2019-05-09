@@ -2,23 +2,17 @@
 // Copyright 2019 jackw01. Released under the MIT License (see LICENSE for details).
 
 const yargs = require('yargs');
-const svg = require('svg.js');
+const fs = require('fs');
+const window = require('svgdom');
+const svg = require('svg.js')(window);
 const delaunator = require('delaunator');
-const chroma = require('chroma-js')
+const chroma = require('chroma-js');
 const perlin = require('./perlin.js');
 
 // Utility stuff
 // Map value
 function map(x, inMin, inMax, outMin, outMax) {
   return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
-}
-
-// Finds the centroid of a group of points
-function centroid(points) {
-  return [
-    points.reduce((a, b) => a[0] + b[0], 0) / points.length,
-    points.reduce((a, b) => a[1] + b[1], 0) / points.length
-  ];
 }
 
 // triangulator2
@@ -32,7 +26,7 @@ triangulator.generate = function generate(input) {
     cellSize: 35,
     cellRandomness: 0.075,
     color: (x, y) => y,
-    colorRandomness: 20,
+    colorRandomness: 0.0,
     overscan: 10,
     colorPalette: ['#efee69', '#21313e'],
   };
@@ -41,11 +35,11 @@ triangulator.generate = function generate(input) {
   const points = [];
   const cellRandomnessLimit = options.cellRandomness * options.cellSize;
   for (let x = -options.overscan;
-       x < options.width + options.overscan + options.cellSize;
-       x += options.cellSize) {
+    x < options.width + options.overscan + options.cellSize;
+    x += options.cellSize) {
     for (let y = -options.overscan;
-         y < options.height + options.overscan + options.cellSize;
-         y += options.cellSize) {
+      y < options.height + options.overscan + options.cellSize;
+      y += options.cellSize) {
       points.push([
         x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
         y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
@@ -58,15 +52,31 @@ triangulator.generate = function generate(input) {
   const trianglePoints = [];
   for (let i = 0; i < delaunay.triangles.length; i += 3) {
     trianglePoints.push([
-      points[delaunay.triangles[i]], points[delaunay.triangles[i + 1]],  points[delaunay.triangles[i + 2]],
+      points[delaunay.triangles[i]], points[delaunay.triangles[i + 1]], points[delaunay.triangles[i + 2]],
     ]);
   }
-  console.log(trianglePoints);
 
   // Convert input colors to chroma.js scale
-  const scale = chroma.scale(options.colorPalette.map(chroma)).mode('hcl');
-  console.log(scale(0));
-}
+  const scale = chroma.scale(options.colorPalette).mode('hcl');
+
+  // Create SVG context and draw
+  const draw = svg(window.document.documentElement);
+  draw.size(options.width, options.height);
+
+  trianglePoints.forEach((tri) => {
+    // Find where the triangle's centroid lies on the gradient
+    const normX = map(tri.reduce((a, b) => a + b[0], 0) / 3, 0, options.width, 0, 1);
+    const normY = map(tri.reduce((a, b) => a + b[1], 0) / 3, 0, options.height, 0, 1);
+
+    // Get color of triangle and make path
+    const color = scale(options.color(normX, normY) + Math.random() * options.colorRandomness);
+    const path = draw.polygon(tri.map(p => p.join(',')).join(' ')).fill(color.hex())//.stroke({ width: 1 });
+  });
+
+  fs.writeFile('out.svg', draw.svg(), (err) => {
+    if (err) throw err;
+  });
+};
 
 // Run the bot automatically if module is run instead of imported
 if (!module.parent) {

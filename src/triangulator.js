@@ -7,7 +7,8 @@ const window = require('svgdom');
 const svg = require('svg.js')(window);
 const delaunator = require('delaunator');
 const chroma = require('chroma-js');
-const perlin = require('./perlin.js');
+const IterativePoissonDiscSampler = require('./poissondisc.js');
+const PerlinNoise = require('./perlin.js');
 
 // Utility stuff
 // Map value
@@ -16,15 +17,17 @@ function map(x, inMin, inMax, outMin, outMax) {
 }
 
 // triangulator2
-const triangulator = {};
+const triangulator = {
+  GridMode: { Square: 1, Triangle: 2, Poisson: 3 },
+};
 
 triangulator.generate = function generate(input) {
   const options = input || {
     width: 1920,
     height: 1080,
-    useSquareGrid: true,
-    cellSize: 35,
-    cellRandomness: 0.075,
+    gridMode: triangulator.GridMode.Poisson,
+    cellSize: 100,
+    cellRandomness: 0.3,
     color: (x, y) => y,
     colorRandomness: 0.0,
     overscan: 10,
@@ -34,18 +37,43 @@ triangulator.generate = function generate(input) {
   // Generate points
   const points = [];
   const cellRandomnessLimit = options.cellRandomness * options.cellSize;
-  for (let x = -options.overscan;
-    x < options.width + options.overscan + options.cellSize;
-    x += options.cellSize) {
+  if (options.gridMode === triangulator.GridMode.Square) {
     for (let y = -options.overscan;
       y < options.height + options.overscan + options.cellSize;
       y += options.cellSize) {
-      points.push([
-        x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
-        y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
-      ]);
+      for (let x = -options.overscan;
+        x < options.width + options.overscan + options.cellSize;
+        x += options.cellSize) {
+        points.push([
+          x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+          y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+        ]);
+      }
+    }
+  } else if (options.gridMode === triangulator.GridMode.Triangle) {
+    let r = 0;
+    for (let x = -options.overscan;
+      x < options.width + options.overscan + options.cellSize;
+      x += options.cellSize) {
+      for (let y = -options.overscan + options.cellSize / Math.sqrt(3) * (r % 2);
+        y < options.height + options.overscan + options.cellSize;
+        y += options.cellSize) {
+        points.push([
+          x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+          y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+        ]);
+      }
+      r++;
+    }
+  } else if (options.gridMode === triangulator.GridMode.Poisson) {
+    const sample = IterativePoissonDiscSampler(options.width, options.height, options.cellSize);
+    let nextPoint = sample();
+    while (nextPoint) {
+      points.push(nextPoint);
+      nextPoint = sample();
     }
   }
+
 
   // Triangulate
   const delaunay = delaunator.from(points);
@@ -70,7 +98,8 @@ triangulator.generate = function generate(input) {
 
     // Get color of triangle and make path
     const color = scale(options.color(normX, normY) + Math.random() * options.colorRandomness);
-    const path = draw.polygon(tri.map(p => p.join(',')).join(' ')).fill(color.hex())//.stroke({ width: 1 });
+    const path = draw.polygon(tri.map(p => p.join(',')).join(' '))
+      .fill(color.hex()).stroke({ color: color.hex(), width: 0.5 });
   });
 
   fs.writeFile('out.svg', draw.svg(), (err) => {

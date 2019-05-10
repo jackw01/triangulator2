@@ -5,6 +5,7 @@ const yargs = require('yargs');
 const fs = require('fs');
 const window = require('svgdom');
 const svg = require('svg.js')(window);
+const svg2Img = require('svg2img');
 const delaunator = require('delaunator');
 const chroma = require('chroma-js');
 const IterativePoissonDiscSampler = require('./poissondisc.js');
@@ -30,19 +31,23 @@ triangulator.generate = function generate(input) {
     cellRandomness: 0.3,
     color: (x, y) => y,
     colorRandomness: 0.0,
-    overscan: 10,
+    useGradientFill: true,
+    gradientNegativeFactor: 0.03,
+    gradientPositiveFactor: 0.03,
     colorPalette: ['#efee69', '#21313e'],
   };
+
+  const gridOverdraw = 10;
 
   // Generate points
   const points = [];
   const cellRandomnessLimit = options.cellRandomness * options.cellSize;
   if (options.gridMode === triangulator.GridMode.Square) {
-    for (let y = -options.overscan;
-      y < options.height + options.overscan + options.cellSize;
+    for (let y = -gridOverdraw;
+      y < options.height + gridOverdraw + options.cellSize;
       y += options.cellSize) {
-      for (let x = -options.overscan;
-        x < options.width + options.overscan + options.cellSize;
+      for (let x = -gridOverdraw;
+        x < options.width + gridOverdraw + options.cellSize;
         x += options.cellSize) {
         points.push([
           x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
@@ -52,11 +57,11 @@ triangulator.generate = function generate(input) {
     }
   } else if (options.gridMode === triangulator.GridMode.Triangle) {
     let r = 0;
-    for (let x = -options.overscan;
-      x < options.width + options.overscan + options.cellSize;
+    for (let x = -gridOverdraw;
+      x < options.width + gridOverdraw + options.cellSize;
       x += options.cellSize) {
-      for (let y = -options.overscan + options.cellSize / Math.sqrt(3) * (r % 2);
-        y < options.height + options.overscan + options.cellSize;
+      for (let y = -gridOverdraw + options.cellSize / Math.sqrt(3) * (r % 2);
+        y < options.height + gridOverdraw + options.cellSize;
         y += options.cellSize) {
         points.push([
           x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
@@ -66,14 +71,13 @@ triangulator.generate = function generate(input) {
       r++;
     }
   } else if (options.gridMode === triangulator.GridMode.Poisson) {
-    const sample = IterativePoissonDiscSampler(options.width, options.height, options.cellSize);
+    const sample = IterativePoissonDiscSampler(1.5 * options.width, 1.5 * options.height, options.cellSize);
     let nextPoint = sample();
     while (nextPoint) {
-      points.push(nextPoint);
+      points.push([nextPoint[0] - 0.25 * options.width, nextPoint[1] - 0.25 * options.height]);
       nextPoint = sample();
     }
   }
-
 
   // Triangulate
   const delaunay = delaunator.from(points);
@@ -96,13 +100,42 @@ triangulator.generate = function generate(input) {
     const normX = map(tri.reduce((a, b) => a + b[0], 0) / 3, 0, options.width, 0, 1);
     const normY = map(tri.reduce((a, b) => a + b[1], 0) / 3, 0, options.height, 0, 1);
 
-    // Get color of triangle and make path
-    const color = scale(options.color(normX, normY) + Math.random() * options.colorRandomness);
-    const path = draw.polygon(tri.map(p => p.join(',')).join(' '))
-      .fill(color.hex()).stroke({ color: color.hex(), width: 0.5 });
+    // Get color/gradient for triangle and make path
+    const colorIndex = options.color(normX, normY) + Math.random() * options.colorRandomness;
+    let color;
+    if (!options.useGradient) {
+      // Use solid color
+      color = scale(colorIndex);
+    } else {
+      // Generate gradient keypoints
+      const i = Math.floor(Math.random() * 3);
+      const p1 = tri[i];
+      const p2 = tri[(i + 1 + Math.floor(Math.random() * 2)) % 3];
+      const vector = [p2[0] - p1[0], p2[1] - p1[1]];
+      const sign = Math.sign(vector[0] * vector[1]);
+      let gradientNormPoint1 = vector.map(a => Math.abs(a));
+      gradientNormPoint1 = gradientNormPoint1.map(a => a / Math.max(...gradientNormPoint1));
+
+      color = draw.gradient('linear', (stop) => {
+        stop.at(0, scale(colorIndex - options.gradientNegativeFactor * sign).hex());
+        stop.at(1, scale(colorIndex + options.gradientPositiveFactor * sign).hex());
+      }).from(0.0, 0.0).to(...gradientNormPoint1);
+    }
+
+    draw.polygon(tri.map(p => p.join(',')).join(' '))
+      .fill(color).stroke({ color, width: 1 });
   });
 
-  fs.writeFile('out.svg', draw.svg(), (err) => {
+  const svgString = draw.svg();
+
+  svg2Img(svgString, (err, buffer) => {
+    if (err) throw err;
+    fs.writeFile('out.png', buffer, (err) => {
+      if (err) throw err;
+    });
+  });
+
+  fs.writeFile('out.svg', svgString, (err) => {
     if (err) throw err;
   });
 };

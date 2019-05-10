@@ -23,6 +23,7 @@
     "chroma-js": "^2.0.3",
     "delaunator": "^3.0.2",
     "svg.js": "^2.7.1",
+    "svg2img": "^0.6.0",
     "svgdom": "0.0.20",
     "yargs": "^13.2.2"
   },

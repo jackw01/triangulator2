@@ -17,9 +17,23 @@ function map(x, inMin, inMax, outMin, outMax) {
   return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
 }
 
+// Distance to closest edge of image, for x and y values normalized to (0, 1)
+function edgeDist(x, y) {
+  return Math.min(Math.min(x, 1 - x), Math.min(y, 1 - y)) * 2;
+}
+
 // triangulator2
 const triangulator = {
   GridMode: { Square: 1, Triangle: 2, Poisson: 3 },
+  ColorFunction: {
+    Horizontal: (x, y) => x,
+    Vertical: (x, y) => y,
+    DiagonalFromRight: (x, y) => (x + y) / 2,
+    DiagonalFromLeft: (x, y) => (1 - x + y) / 2,
+    RadialFromCenter: (x, y) => Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2) * 1.1,
+    RadialFromBottom: (x, y) => Math.hypot(x - 0.5, y - 1.5) - 0.5,
+    FromEdges: (x, y) => edgeDist(x, y) * 0.3 + (1 - Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2)) * 0.7,
+  },
 };
 
 triangulator.generate = function generate(input) {
@@ -29,9 +43,9 @@ triangulator.generate = function generate(input) {
     gridMode: triangulator.GridMode.Poisson,
     cellSize: 100,
     cellRandomness: 0.3,
-    color: (x, y) => y,
+    color: triangulator.ColorFunction.FromEdges,
     colorRandomness: 0.0,
-    useGradientFill: true,
+    useGradient: false,
     gradientNegativeFactor: 0.03,
     gradientPositiveFactor: 0.03,
     colorPalette: ['#efee69', '#21313e'],
@@ -105,7 +119,7 @@ triangulator.generate = function generate(input) {
     let color;
     if (!options.useGradient) {
       // Use solid color
-      color = scale(colorIndex);
+      color = scale(colorIndex).hex();
     } else {
       // Generate gradient keypoints
       const i = Math.floor(Math.random() * 3);

@@ -43,7 +43,7 @@ module.exports = class PerlinNoise {
     const B = this.permutation[X + 1] + Y;
     const BA = this.permutation[B] + Z;
     const BB = this.permutation[B + 1] + Z;
-    return (lerp(w, lerp(v, lerp(u, this.grad(this.permutation[AA], x, y, z),
+    return (lerp(w, lerp(v, lerp(u, grad(this.permutation[AA], x, y, z),
       grad(this.permutation[BA], x - 1, y, z)),
     lerp(u, grad(this.permutation[AB], x, y - 1, z),
       grad(this.permutation[BB], x - 1, y - 1, z))),

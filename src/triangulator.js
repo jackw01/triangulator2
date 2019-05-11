@@ -22,6 +22,8 @@ function edgeDist(x, y) {
   return Math.min(Math.min(x, 1 - x), Math.min(y, 1 - y)) * 2;
 }
 
+const noiseGenerator = new PerlinNoise();
+
 // triangulator2
 const triangulator = {
   GridMode: { Square: 1, Triangle: 2, Poisson: 3 },
@@ -33,6 +35,7 @@ const triangulator = {
     RadialFromCenter: (x, y) => Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2) * 1.1,
     RadialFromBottom: (x, y) => Math.hypot(x - 0.5, y - 1.5) - 0.5,
     FromEdges: (x, y) => edgeDist(x, y) * 0.3 + (1 - Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2)) * 0.7,
+    Noise: (sx, sy) => (x, y) => noiseGenerator.noise(x * sx, y * sy, 0),
   },
 };
 
@@ -43,12 +46,14 @@ triangulator.generate = function generate(input) {
     gridMode: triangulator.GridMode.Poisson,
     cellSize: 100,
     cellRandomness: 0.3,
-    color: triangulator.ColorFunction.FromEdges,
+    color: triangulator.ColorFunction.Vertical,
     colorRandomness: 0.0,
     useGradient: false,
     gradientNegativeFactor: 0.03,
     gradientPositiveFactor: 0.03,
     colorPalette: ['#efee69', '#21313e'],
+    strokeColor: false,
+    strokeWidth: false,
   };
 
   const gridOverdraw = 10;
@@ -115,7 +120,7 @@ triangulator.generate = function generate(input) {
     const normY = map(tri.reduce((a, b) => a + b[1], 0) / 3, 0, options.height, 0, 1);
 
     // Get color/gradient for triangle and make path
-    const colorIndex = options.color(normX, normY) + Math.random() * options.colorRandomness;
+    const colorIndex = options.color(normX, normY) + (Math.random() - 0.5) * options.colorRandomness;
     let color;
     if (!options.useGradient) {
       // Use solid color
@@ -137,7 +142,7 @@ triangulator.generate = function generate(input) {
     }
 
     draw.polygon(tri.map(p => p.join(',')).join(' '))
-      .fill(color).stroke({ color, width: 1 });
+      .fill(color).stroke({ color: options.strokeColor || color, width: options.strokeWidth || 1 });
   });
 
   const svgString = draw.svg();
@@ -166,8 +171,22 @@ if (!module.parent) {
     .describe('generateDocs', 'Generate Markdown file containing command documenation.')
     .help('h')
     .alias('h', 'help')
-    .epilog('Liora Discord bot copyright 2018 jackw01. Released under the MIT license.')
+    .epilog('triangulator2 copyright 2018 jackw01. Released under the MIT license.')
     .argv;
 
-  triangulator.generate();
+  triangulator.generate({
+    width: 3840,
+    height: 2160,
+    gridMode: triangulator.GridMode.Poisson,
+    cellSize: 150,
+    cellRandomness: 0.2,
+    color: triangulator.ColorFunction.RadialFromBottom,
+    colorRandomness: 0.15,
+    useGradient: true,
+    gradientNegativeFactor: 0.03,
+    gradientPositiveFactor: 0.03,
+    colorPalette: ['#e7a71d', '#dc433e', '#9e084b', '#41062f'],
+    strokeColor: false,
+    strokeWidth: 1,
+  });
 }

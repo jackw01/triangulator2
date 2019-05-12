@@ -6,6 +6,7 @@ const fs = require('fs');
 const window = require('svgdom');
 const svg = require('svg.js')(window);
 const svg2Img = require('svg2img');
+const seedrandom = require('seedrandom');
 const delaunator = require('delaunator');
 const chroma = require('chroma-js');
 const IterativePoissonDiscSampler = require('./poissondisc.js');
@@ -41,6 +42,7 @@ const triangulator = {
 
 triangulator.generate = function generate(input) {
   const options = input || {
+    seed: Math.random(),
     width: 1920,
     height: 1080,
     gridMode: triangulator.GridMode.Poisson,
@@ -58,6 +60,9 @@ triangulator.generate = function generate(input) {
 
   const gridOverdraw = 10;
 
+  // Set up RNG
+  const rng = seedrandom(`${options.seed}`);
+
   // Generate points
   const points = [];
   const cellRandomnessLimit = options.cellRandomness * options.cellSize;
@@ -69,8 +74,8 @@ triangulator.generate = function generate(input) {
         x < options.width + gridOverdraw + options.cellSize;
         x += options.cellSize) {
         points.push([
-          x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
-          y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+          x + Math.floor(rng() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+          y + Math.floor(rng() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
         ]);
       }
     }
@@ -83,14 +88,15 @@ triangulator.generate = function generate(input) {
         y < options.height + gridOverdraw + options.cellSize;
         y += options.cellSize) {
         points.push([
-          x + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
-          y + Math.floor(Math.random() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+          x + Math.floor(rng() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
+          y + Math.floor(rng() * (2 * cellRandomnessLimit + 1)) - cellRandomnessLimit,
         ]);
       }
       r++;
     }
   } else if (options.gridMode === triangulator.GridMode.Poisson) {
-    const sample = IterativePoissonDiscSampler(1.5 * options.width, 1.5 * options.height, options.cellSize);
+    const sample = IterativePoissonDiscSampler(1.5 * options.width, 1.5 * options.height,
+      options.cellSize, rng);
     let nextPoint = sample();
     while (nextPoint) {
       points.push([nextPoint[0] - 0.25 * options.width, nextPoint[1] - 0.25 * options.height]);
@@ -120,16 +126,16 @@ triangulator.generate = function generate(input) {
     const normY = map(tri.reduce((a, b) => a + b[1], 0) / 3, 0, options.height, 0, 1);
 
     // Get color/gradient for triangle and make path
-    const colorIndex = options.color(normX, normY) + (Math.random() - 0.5) * options.colorRandomness;
+    const colorIndex = options.color(normX, normY) + (rng() - 0.5) * options.colorRandomness;
     let color;
     if (!options.useGradient) {
       // Use solid color
       color = scale(colorIndex).hex();
     } else {
       // Generate gradient keypoints
-      const i = Math.floor(Math.random() * 3);
+      const i = Math.floor(rng() * 3);
       const p1 = tri[i];
-      const p2 = tri[(i + 1 + Math.floor(Math.random() * 2)) % 3];
+      const p2 = tri[(i + 1 + Math.floor(rng() * 2)) % 3];
       const vector = [p2[0] - p1[0], p2[1] - p1[1]];
       const sign = Math.sign(vector[0] * vector[1]);
       let gradientNormPoint1 = vector.map(a => Math.abs(a));
@@ -175,6 +181,7 @@ if (!module.parent) {
     .argv;
 
   triangulator.generate({
+    seed: 4,
     width: 3840,
     height: 2160,
     gridMode: triangulator.GridMode.Poisson,

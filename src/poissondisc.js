@@ -2,7 +2,7 @@
 // Based on this implementation: https://www.jasondavies.com/poisson-disc/
 // This code is in the public domain
 
-module.exports = function IterativePoissonDiscSampler(width, height, radius) {
+module.exports = function IterativePoissonDiscSampler(width, height, radius, rng) {
   const k = 30; // Maximum number of samples before rejection
   const radius2 = radius * radius;
   const R = 3 * radius2;
@@ -47,16 +47,16 @@ module.exports = function IterativePoissonDiscSampler(width, height, radius) {
 
   return function iterate() {
     // Pick a random point for the first sample
-    if (!sampleSize) return sample(Math.random() * width, Math.random() * height);
+    if (!sampleSize) return sample(rng() * width, rng() * height);
 
     // Pick a random existing sample and remove it from the queue.
     while (queueSize) {
-      const i = Math.floor(Math.random() * queueSize);
+      const i = Math.floor(rng() * queueSize);
 
       // Make a new candidate between [radius, 2 * radius] from the existing sample.
       for (let j = 0; j < k; ++j) {
-        const a = 2 * Math.PI * Math.random();
-        const r = Math.sqrt(Math.random() * R + radius2);
+        const a = 2 * Math.PI * rng();
+        const r = Math.sqrt(rng() * R + radius2);
         const x = queue[i][0] + r * Math.cos(a);
         const y = queue[i][1] + r * Math.sin(a);
 

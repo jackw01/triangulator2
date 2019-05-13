@@ -7,6 +7,7 @@
     "triangulator2": "./test/test.js"
   },
   "scripts": {
+    "build-web": "browserify ./test/test-web.js -o ./test/bundle.js",
     "test": "node ./test/test.js"
   },
   "repository": {
@@ -28,11 +29,10 @@
     "yargs": "^13.2.2"
   },
   "devDependencies": {
+    "babel-cli": "^6.26.0",
     "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
     "eslint-plugin-import": "^2.17.2",
-    "svg2img": "^0.6.0",
-    "webpack": "^4.31.0",
-    "webpack-cli": "^3.3.2"
+    "svg2img": "^0.6.0"
   }
 }

@@ -1,7 +1,7 @@
 // triangulator2 - SVG triangle art generator
 // Copyright 2019 jackw01. Released under the MIT License (see LICENSE for details).
 
-const svg = require('svg.js')((typeof window === 'undefined') ?  require('svgdom') : window);
+const svg = typeof window === 'undefined' ? require('svg.js')(require('svgdom')) : require('svg.js');
 const seedrandom = require('seedrandom');
 const delaunator = require('delaunator');
 const chroma = require('chroma-js');
@@ -135,8 +135,7 @@ triangulator.generate = function generate(input) {
   const scale = chroma.scale(options.colorPalette).mode('hcl');
 
   // Create SVG context and draw
-  const draw = svg(options.svgInput);
-  draw.size(options.width, options.height);
+  const draw = svg(options.svgInput).size(options.width, options.height);
 
   trianglePoints.forEach((tri) => {
     // Find where the triangle's centroid lies on the gradient

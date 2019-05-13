@@ -23,11 +23,13 @@ function edgeDist(x, y) {
   return Math.min(Math.min(x, 1 - x), Math.min(y, 1 - y)) * 2;
 }
 
-const noiseGenerator = new PerlinNoise();
+let rng = Math.random;
+let noiseGenerator = new PerlinNoise(rng);
 
 // triangulator2
 const triangulator = {
   GridMode: { Square: 1, Triangle: 2, Poisson: 3 },
+  // Must return a scalar from 0 to 1
   ColorFunction: {
     Horizontal: (x, y) => x,
     Vertical: (x, y) => y,
@@ -37,6 +39,19 @@ const triangulator = {
     RadialFromBottom: (x, y) => Math.hypot(x - 0.5, y - 1.5) - 0.5,
     FromEdges: (x, y) => edgeDist(x, y) * 0.3 + (1 - Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2)) * 0.7,
     Noise: (sx, sy) => (x, y) => noiseGenerator.noise(x * sx, y * sy, 0),
+  },
+  // Must return a vector with x and y from 0 to 1 as an array and a direction value (-1 or 1)
+  GradientFunction: {
+    Random: (triangle) => {
+      const i = Math.floor(rng() * 3);
+      const p1 = triangle[i];
+      const p2 = triangle[(i + 1 + Math.floor(rng() * 2)) % 3];
+      const vector = [p2[0] - p1[0], p2[1] - p1[1]];
+      const gradientDirection = Math.sign(vector[0] * vector[1]);
+      let gradientVector = vector.map(a => Math.abs(a));
+      gradientVector = gradientVector.map(a => a / Math.max(...gradientVector));
+      return { gradientVector, gradientDirection };
+    },
   },
 };
 
@@ -51,6 +66,7 @@ triangulator.generate = function generate(input) {
     color: triangulator.ColorFunction.Vertical,
     colorRandomness: 0.0,
     useGradient: false,
+    gradient: triangulator.GradientFunction.Random,
     gradientNegativeFactor: 0.03,
     gradientPositiveFactor: 0.03,
     colorPalette: ['#efee69', '#21313e'],
@@ -61,7 +77,8 @@ triangulator.generate = function generate(input) {
   const gridOverdraw = 10;
 
   // Set up RNG
-  const rng = seedrandom(`${options.seed}`);
+  rng = seedrandom(`${options.seed}`);
+  noiseGenerator = new PerlinNoise(rng);
 
   // Generate points
   const points = [];
@@ -132,19 +149,12 @@ triangulator.generate = function generate(input) {
       // Use solid color
       color = scale(colorIndex).hex();
     } else {
-      // Generate gradient keypoints
-      const i = Math.floor(rng() * 3);
-      const p1 = tri[i];
-      const p2 = tri[(i + 1 + Math.floor(rng() * 2)) % 3];
-      const vector = [p2[0] - p1[0], p2[1] - p1[1]];
-      const sign = Math.sign(vector[0] * vector[1]);
-      let gradientNormPoint1 = vector.map(a => Math.abs(a));
-      gradientNormPoint1 = gradientNormPoint1.map(a => a / Math.max(...gradientNormPoint1));
-
+      // Generate gradient vector and direction
+      const { gradientVector, gradientDirection } = options.gradient(tri);
       color = draw.gradient('linear', (stop) => {
-        stop.at(0, scale(colorIndex - options.gradientNegativeFactor * sign).hex());
-        stop.at(1, scale(colorIndex + options.gradientPositiveFactor * sign).hex());
-      }).from(0.0, 0.0).to(...gradientNormPoint1);
+        stop.at(0, scale(colorIndex - options.gradientNegativeFactor * gradientDirection).hex());
+        stop.at(1, scale(colorIndex + options.gradientPositiveFactor * gradientDirection).hex());
+      }).from(0.0, 0.0).to(...gradientVector);
     }
 
     draw.polygon(tri.map(p => p.join(',')).join(' '))
@@ -190,6 +200,7 @@ if (!module.parent) {
     color: triangulator.ColorFunction.RadialFromBottom,
     colorRandomness: 0.15,
     useGradient: true,
+    gradient: triangulator.GradientFunction.Random,
     gradientNegativeFactor: 0.03,
     gradientPositiveFactor: 0.03,
     colorPalette: ['#e7a71d', '#dc433e', '#9e084b', '#41062f'],

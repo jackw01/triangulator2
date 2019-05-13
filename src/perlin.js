@@ -13,12 +13,12 @@ function grad(hash, x, y, z) {
 }
 
 module.exports = class PerlinNoise {
-  constructor() {
+  constructor(rng) {
     this.permutation = [];
     for (let i = 0; i < 256; i++) this.permutation.push(i);
 
     for (let i = 256; i > 0; i--) {
-      const randomIndex = Math.floor(Math.random() * i);
+      const randomIndex = Math.floor(rng() * i);
       const temporaryValue = this.permutation[i - 1];
       this.permutation[i - 1] = this.permutation[randomIndex];
       this.permutation[randomIndex] = temporaryValue;

@@ -1,11 +1,7 @@
 // triangulator2 - SVG triangle art generator
 // Copyright 2019 jackw01. Released under the MIT License (see LICENSE for details).
 
-const yargs = require('yargs');
-const fs = require('fs');
-const window = require('svgdom');
-const svg = require('svg.js')(window);
-const svg2Img = require('svg2img');
+const svg = require('svg.js')((typeof window === 'undefined') ?  require('svgdom') : window);
 const seedrandom = require('seedrandom');
 const delaunator = require('delaunator');
 const chroma = require('chroma-js');
@@ -28,7 +24,7 @@ let noiseGenerator = new PerlinNoise(rng);
 
 // triangulator2
 const triangulator = {
-  GridMode: { Square: 1, Triangle: 2, Poisson: 3 },
+  GridMode: { Square: 1, Triangle: 2, Poisson: 3, Override: 4 },
   // Must return a scalar from 0 to 1
   ColorFunction: {
     Horizontal: (x, y) => x,
@@ -42,11 +38,10 @@ const triangulator = {
   },
   // Must return a vector with x and y from 0 to 1 as an array and a direction value (-1 or 1)
   GradientFunction: {
-    Random: (triangle) => {
+    Random: (triangle, x, y) => {
       const i = Math.floor(rng() * 3);
-      const p1 = triangle[i];
       const p2 = triangle[(i + 1 + Math.floor(rng() * 2)) % 3];
-      const vector = [p2[0] - p1[0], p2[1] - p1[1]];
+      const vector = [p2[0] - triangle[i][0], p2[1] - triangle[i][1]];
       const gradientDirection = Math.sign(vector[0] * vector[1]);
       let gradientVector = vector.map(a => Math.abs(a));
       gradientVector = gradientVector.map(a => a / Math.max(...gradientVector));
@@ -57,19 +52,23 @@ const triangulator = {
 
 triangulator.generate = function generate(input) {
   const options = input || {
+    svgInput: false,
     seed: Math.random(),
     width: 1920,
     height: 1080,
     gridMode: triangulator.GridMode.Poisson,
+    gridOverridde: false,
     cellSize: 100,
     cellRandomness: 0.3,
+    colorOverride: false,
     color: triangulator.ColorFunction.Vertical,
+    colorPalette: ['#efee69', '#21313e'],
     colorRandomness: 0.0,
+    quantizeSteps: 0,
     useGradient: false,
     gradient: triangulator.GradientFunction.Random,
     gradientNegativeFactor: 0.03,
     gradientPositiveFactor: 0.03,
-    colorPalette: ['#efee69', '#21313e'],
     strokeColor: false,
     strokeWidth: false,
   };
@@ -119,6 +118,8 @@ triangulator.generate = function generate(input) {
       points.push([nextPoint[0] - 0.25 * options.width, nextPoint[1] - 0.25 * options.height]);
       nextPoint = sample();
     }
+  } else if (options.gridMode === triangulator.GridMode.Override) {
+    points.push(...options.gridOverride);
   }
 
   // Triangulate
@@ -134,7 +135,7 @@ triangulator.generate = function generate(input) {
   const scale = chroma.scale(options.colorPalette).mode('hcl');
 
   // Create SVG context and draw
-  const draw = svg(window.document.documentElement);
+  const draw = svg(options.svgInput);
   draw.size(options.width, options.height);
 
   trianglePoints.forEach((tri) => {
@@ -142,69 +143,34 @@ triangulator.generate = function generate(input) {
     const normX = map(tri.reduce((a, b) => a + b[0], 0) / 3, 0, options.width, 0, 1);
     const normY = map(tri.reduce((a, b) => a + b[1], 0) / 3, 0, options.height, 0, 1);
 
-    // Get color/gradient for triangle and make path
-    const colorIndex = options.color(normX, normY) + (rng() - 0.5) * options.colorRandomness;
+    // Get color/gradient for triangle
     let color;
-    if (!options.useGradient) {
-      // Use solid color
-      color = scale(colorIndex).hex();
+
+    if (!options.colorOverride) {
+      // Determine where the color lies on the scale - quantize if necessary
+      let colorIndex = options.color(normX, normY) + (rng() - 0.5) * options.colorRandomness;
+      if (options.quantizeSteps) {
+        colorIndex = Math.round(colorIndex * options.quantizeSteps) / (options.quantizeSteps - 1);
+      }
+
+      if (!options.useGradient) { // Use solid color
+        color = scale(colorIndex).hex();
+      } else { // Generate gradient vector and direction
+        const { gradientVector, gradientDirection } = options.gradient(tri, normX, normY);
+        color = draw.gradient('linear', (stop) => {
+          stop.at(0, scale(colorIndex - options.gradientNegativeFactor * gradientDirection).hex());
+          stop.at(1, scale(colorIndex + options.gradientPositiveFactor * gradientDirection).hex());
+        }).from(0.0, 0.0).to(...gradientVector);
+      }
     } else {
-      // Generate gradient vector and direction
-      const { gradientVector, gradientDirection } = options.gradient(tri);
-      color = draw.gradient('linear', (stop) => {
-        stop.at(0, scale(colorIndex - options.gradientNegativeFactor * gradientDirection).hex());
-        stop.at(1, scale(colorIndex + options.gradientPositiveFactor * gradientDirection).hex());
-      }).from(0.0, 0.0).to(...gradientVector);
+      color = options.colorOverride(normX, normY);
     }
 
     draw.polygon(tri.map(p => p.join(',')).join(' '))
       .fill(color).stroke({ color: options.strokeColor || color, width: options.strokeWidth || 1 });
   });
 
-  const svgString = draw.svg();
-
-  svg2Img(svgString, (err, buffer) => {
-    if (err) throw err;
-    fs.writeFile('out.png', buffer, (err) => {
-      if (err) throw err;
-    });
-  });
-
-  fs.writeFile('out.svg', svgString, (err) => {
-    if (err) throw err;
-  });
+  return draw.svg();
 };
 
-// Run the bot automatically if module is run instead of imported
-if (!module.parent) {
-  const args = yargs.usage('Usage: triangulator2 [options]')
-    .alias('c', 'configDir')
-    .nargs('c', 1)
-    .describe('c', 'Config directory (defaults to ~/.liora-bot/)')
-    .boolean('openConfig')
-    .describe('openConfig', 'Open config.json in the default text editor')
-    .boolean('generateDocs')
-    .describe('generateDocs', 'Generate Markdown file containing command documenation.')
-    .help('h')
-    .alias('h', 'help')
-    .epilog('triangulator2 copyright 2018 jackw01. Released under the MIT license.')
-    .argv;
-
-  triangulator.generate({
-    seed: 4,
-    width: 3840,
-    height: 2160,
-    gridMode: triangulator.GridMode.Poisson,
-    cellSize: 150,
-    cellRandomness: 0.2,
-    color: triangulator.ColorFunction.RadialFromBottom,
-    colorRandomness: 0.15,
-    useGradient: true,
-    gradient: triangulator.GradientFunction.Random,
-    gradientNegativeFactor: 0.03,
-    gradientPositiveFactor: 0.03,
-    colorPalette: ['#e7a71d', '#dc433e', '#9e084b', '#41062f'],
-    strokeColor: false,
-    strokeWidth: 1,
-  });
-}
+module.exports = triangulator;

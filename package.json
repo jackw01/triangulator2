@@ -4,10 +4,10 @@
   "description": "SVG triangle art generator",
   "main": "src/triangulator.js",
   "bin": {
-    "triangulator2": "src/triangulator.js"
+    "triangulator2": "./test/test.js"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node ./test/test.js"
   },
   "repository": {
     "type": "git",
@@ -24,13 +24,15 @@
     "delaunator": "^3.0.2",
     "seedrandom": "^3.0.1",
     "svg.js": "^2.7.1",
-    "svg2img": "^0.6.0",
     "svgdom": "0.0.20",
     "yargs": "^13.2.2"
   },
   "devDependencies": {
     "eslint": "^5.16.0",
     "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.17.2"
+    "eslint-plugin-import": "^2.17.2",
+    "svg2img": "^0.6.0",
+    "webpack": "^4.31.0",
+    "webpack-cli": "^3.3.2"
   }
 }

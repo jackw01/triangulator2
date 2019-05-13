@@ -1,11 +1,11 @@
-const triangulator = require('../src/triangulator.js');
+const triangulator = require('../../src/triangulator.js');
 
 window.onload = () => {
   const svgString = triangulator.generate({
     svgInput: 'drawing',
     seed: 4,
     width: 3840,
-    height: 2160,
+    height: 2400,
     gridMode: triangulator.GridMode.Poisson,
     gridOverride: false,
     cellSize: 150,

@@ -60175,7 +60175,7 @@ triangulator.generate = function generate(input) {
 module.exports = triangulator;
 
 },{"./perlin.js":258,"./poissondisc.js":259,"chroma-js":72,"delaunator":200,"seedrandom":227,"svg.js":235,"svgdom":243}],261:[function(require,module,exports){
-const triangulator = require('../src/triangulator.js');
+const triangulator = require('../../src/triangulator.js');
 
 window.onload = () => {
   const svgString = triangulator.generate({
@@ -60203,4 +60203,4 @@ window.onload = () => {
   console.log(svgString);
 };
 
-},{"../src/triangulator.js":260}]},{},[261]);
+},{"../../src/triangulator.js":260}]},{},[261]);

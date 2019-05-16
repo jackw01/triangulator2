@@ -8,7 +8,12 @@ import chroma from 'chroma-js';
 import IterativePoissonDiscSampler from './poissondisc';
 import PerlinNoise from './perlin';
 
-const svg = typeof window === 'undefined' ? require('svg.js')(require('svgdom')) : require('svg.js');
+//import svgdom from 'svgdom';
+import svg1 from 'svg.js';
+
+const svg = svg1;
+
+//const svg = typeof window === 'undefined' ? require('svg.js')(require('svgdom')) : require('svg.js');
 
 // Utility stuff
 // Map value
@@ -65,6 +70,7 @@ const triangulator = {
       cellRandomness: 0.3,
       colorOverride: false,
       color: this.ColorFunction.Vertical,
+      colorScaleInvert: false,
       colorPalette: ['#efee69', '#21313e'],
       colorRandomness: 0.0,
       quantizeSteps: 0,
@@ -76,7 +82,7 @@ const triangulator = {
       strokeWidth: false,
     };
 
-    const gridOverdraw = 10;
+    const gridOverdraw = 100;
 
     // Set up RNG
     rng = seedrandom(`${options.seed}`);
@@ -165,6 +171,8 @@ const triangulator = {
         if (options.quantizeSteps) {
           colorIndex = Math.round(colorIndex * options.quantizeSteps) / (options.quantizeSteps - 1);
         }
+
+        if (options.colorScaleInvert) colorIndex = 1 - colorIndex;
 
         if (!options.useGradient) { // Use solid color
           color = scale(colorIndex).hex();

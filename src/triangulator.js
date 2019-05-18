@@ -38,8 +38,8 @@ const triangulator = {
   ColorFunction: {
     Horizontal: (x, y) => x,
     Vertical: (x, y) => y,
-    DiagonalFromRight: (x, y) => (x + y) / 2,
-    DiagonalFromLeft: (x, y) => (1 - x + y) / 2,
+    DiagonalFromLeft: (x, y) => (x + y) / 2,
+    DiagonalFromRight: (x, y) => (1 - x + y) / 2,
     RadialFromCenter: (x, y) => Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2) * 1.1,
     RadialFromBottom: (x, y) => Math.hypot(x - 0.5, y - 1.5) - 0.5,
     FromEdges: (x, y) => edgeDist(x, y) * 0.3 + (1 - Math.hypot(x - 0.5, y - 0.5) * Math.sqrt(2)) * 0.7,
@@ -89,7 +89,8 @@ const triangulator = {
     noiseGenerator = new PerlinNoise(rng);
 
     // Generate points
-    let points = [];
+    const points = [];
+    let trianglePoints = [];
     const pointOptionsHash = hash([options.seed, options.width, options.height, options.gridMode,
       options.gridOverride, options.cellSize, options.cellRandomness]);
     if (pointOptionsHash !== this.lastPointOptionsHash) {
@@ -136,18 +137,17 @@ const triangulator = {
         points.push(...options.gridOverride);
       }
 
-      this.pointCache = points;
-    } else {
-      points = this.pointCache;
-    }
+      // Triangulate
+      const delaunay = Delaunator.from(points);
+      for (let i = 0; i < delaunay.triangles.length; i += 3) {
+        trianglePoints.push([
+          points[delaunay.triangles[i]], points[delaunay.triangles[i + 1]], points[delaunay.triangles[i + 2]],
+        ]);
+      }
 
-    // Triangulate
-    const delaunay = Delaunator.from(points);
-    const trianglePoints = [];
-    for (let i = 0; i < delaunay.triangles.length; i += 3) {
-      trianglePoints.push([
-        points[delaunay.triangles[i]], points[delaunay.triangles[i + 1]], points[delaunay.triangles[i + 2]],
-      ]);
+      this.pointCache = trianglePoints;
+    } else {
+      trianglePoints = this.pointCache;
     }
 
     // Convert input colors to chroma.js scale

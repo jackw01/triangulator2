@@ -5,15 +5,9 @@ import seedrandom from 'seedrandom';
 import Delaunator from 'delaunator';
 import hash from 'object-hash';
 import chroma from 'chroma-js';
+import svgjs from 'svg.js';
 import IterativePoissonDiscSampler from './poissondisc';
 import PerlinNoise from './perlin';
-
-//import svgdom from 'svgdom';
-import svg1 from 'svg.js';
-
-const svg = svg1;
-
-//const svg = typeof window === 'undefined' ? require('svg.js')(require('svgdom')) : require('svg.js');
 
 // Utility stuff
 // Map value
@@ -59,6 +53,7 @@ const triangulator = {
   },
   generate: function generate(input) {
     const options = input || {
+      isBrowser: false,
       svgInput: false,
       forceSVGSize: false,
       seed: Math.random(),
@@ -69,7 +64,7 @@ const triangulator = {
       cellSize: 100,
       cellRandomness: 0.3,
       colorOverride: false,
-      color: this.ColorFunction.Vertical,
+      color: this.ColorFunction.DiagonalFromLeft,
       colorScaleInvert: false,
       colorPalette: ['#efee69', '#21313e'],
       colorRandomness: 0.0,
@@ -81,6 +76,9 @@ const triangulator = {
       strokeColor: false,
       strokeWidth: false,
     };
+
+    // Non-global require is a bad practice but necessary here
+    const svg = options.isBrowser ? svgjs : svgjs(require('svgdom'));
 
     const gridOverdraw = 100;
 

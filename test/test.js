@@ -6,6 +6,7 @@ const Triangulator = require('../src/index.js');
 const svgString = Triangulator.generate({
   isBrowser: false,
   svgInput: window.document.documentElement,
+  forceSVGSize: true,
   seed: Math.random(),
   width: 1920,
   height: 1080,

@@ -2,6 +2,17 @@
   "name": "triangulator2",
   "version": "1.0.0",
   "description": "SVG triangle art generator",
+  "keywords": [
+    "art",
+    "svg",
+    "triangle",
+    "delaunay",
+    "triangulation",
+    "color",
+    "procedural",
+    "generation",
+    "generative"
+  ],
   "main": "src/index.js",
   "bin": {
     "triangulator2": "./test/test.js"

@@ -155,6 +155,9 @@ const triangulator = {
     const draw = svg(options.svgInput);
     if (options.forceSVGSize) draw.size(options.width, options.height);
 
+    // Reset rng after drawing points
+    rng = seedrandom(`${options.seed}`);
+
     trianglePoints.forEach((tri) => {
       // Find where the triangle's centroid lies on the gradient
       const normX = map(tri.reduce((a, b) => a + b[0], 0) / 3, 0, options.width, 0, 1);

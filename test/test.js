@@ -28,6 +28,8 @@ const svgString = Triangulator.generate({
   strokeWidth: false,
 });
 
+console.log('writing...');
+
 svg2Img(svgString, (err, buffer) => {
   if (err) console.log(err);
 

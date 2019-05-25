@@ -10,11 +10,6 @@ import IterativePoissonDiscSampler from './poissondisc';
 import PerlinNoise from './perlin';
 
 // Utility stuff
-// Map value
-function map(x, inMin, inMax, outMin, outMax) {
-  return (x - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
-}
-
 // Distance to closest edge of image, for x and y values normalized to (0, 1)
 function edgeDist(x, y) {
   return Math.min(Math.min(x, 1 - x), Math.min(y, 1 - y)) * 2;
@@ -45,13 +40,17 @@ const triangulator = {
       const i = Math.floor(rng() * 3);
       const p2 = triangle[(i + 1 + Math.floor(rng() * 2)) % 3];
       const vector = [p2[0] - triangle[i][0], p2[1] - triangle[i][1]];
-      const gradientDirection = Math.sign(vector[0] * vector[1]);
-      let gradientVector = vector.map(a => Math.abs(a));
-      gradientVector = gradientVector.map(a => a / Math.max(...gradientVector));
-      return { gradientVector, gradientDirection };
+      const vectorAbs = [Math.abs(vector[0]), Math.abs(vector[1])];
+      const max = Math.max(...vectorAbs);
+      return {
+        gradientVector: [vectorAbs[0] / max, vectorAbs[1] / max],
+        gradientDirection: Math.sign(vector[0] * vector[1]),
+      };
     },
   },
-  generate: function generate(input) {
+  generate: function generate(input, perfTest = false, c = console) {
+    if (perfTest) c.time('total');
+    if (perfTest) c.time('setup');
     const options = input || {
       isBrowser: false,
       svgInput: false,
@@ -86,9 +85,12 @@ const triangulator = {
     rng = seedrandom(`${options.seed}`);
     noiseGenerator = new PerlinNoise(rng);
 
+    if (perfTest) c.timeEnd('setup');
+    if (perfTest) c.time('points');
+
     // Generate points
     const points = [];
-    let trianglePoints = [];
+    let tris = [];
     const pointOptionsHash = hash([options.seed, options.width, options.height, options.gridMode,
       options.gridOverride, options.cellSize, options.cellRandomness]);
     if (pointOptionsHash !== this.lastPointOptionsHash) {
@@ -138,15 +140,17 @@ const triangulator = {
       // Triangulate
       const delaunay = Delaunator.from(points);
       for (let i = 0; i < delaunay.triangles.length; i += 3) {
-        trianglePoints.push([
+        tris.push([
           points[delaunay.triangles[i]], points[delaunay.triangles[i + 1]], points[delaunay.triangles[i + 2]],
         ]);
       }
 
-      this.pointCache = trianglePoints;
+      this.pointCache = tris;
     } else {
-      trianglePoints = this.pointCache;
+      tris = this.pointCache;
     }
+
+    if (perfTest) c.timeEnd('points');
 
     // Convert input colors to chroma.js scale
     const scale = chroma.scale(options.colorPalette).mode('hcl');
@@ -158,10 +162,12 @@ const triangulator = {
     // Reset rng after drawing points
     rng = seedrandom(`${options.seed}`);
 
-    trianglePoints.forEach((tri) => {
+    if (perfTest) c.time('draw');
+
+    for (let i = 0; i < tris.length; i++) {
       // Find where the triangle's centroid lies on the gradient
-      const normX = map(tri.reduce((a, b) => a + b[0], 0) / 3, 0, options.width, 0, 1);
-      const normY = map(tri.reduce((a, b) => a + b[1], 0) / 3, 0, options.height, 0, 1);
+      const normX = (tris[i][0][0] + tris[i][1][0] + tris[i][2][0]) / 3 / options.width;
+      const normY = (tris[i][0][1] + tris[i][1][1] + tris[i][2][1]) / 3 / options.height;
 
       // Get color/gradient for triangle
       let color;
@@ -178,7 +184,7 @@ const triangulator = {
         if (!options.useGradient) { // Use solid color
           color = scale(colorIndex).hex();
         } else { // Generate gradient vector and direction
-          const { gradientVector, gradientDirection } = options.gradient(tri, normX, normY);
+          const { gradientVector, gradientDirection } = options.gradient(tris[i], normX, normY);
           color = draw.gradient('linear', (stop) => {
             stop.at(0, scale(colorIndex - options.gradientNegativeFactor * gradientDirection).hex());
             stop.at(1, scale(colorIndex + options.gradientPositiveFactor * gradientDirection).hex());
@@ -188,10 +194,13 @@ const triangulator = {
         color = options.colorOverride(normX, normY);
       }
 
-      draw.polygon(tri.map(p => p.join(',')).join(' '))
-        .fill(color).stroke({ color: options.strokeColor || color, width: options.strokeWidth || 1 });
-    });
+      draw.polygon(tris[i].map(p => p.join(',')).join(' '))
+        .fill(color)
+        .stroke({ color: options.strokeColor || color, width: options.strokeWidth || 1 });
+    }
 
+    if (perfTest) c.timeEnd('draw');
+    if (perfTest) c.timeEnd('total');
     return draw.svg();
   },
 };

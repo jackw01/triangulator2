@@ -35,6 +35,8 @@ const options = {
   gradientPositiveFactor: 0.03,
   strokeColor: false,
   strokeWidth: false,
+  strokeOnly: false,
+  backgroundColor: '#000000',
 };
 
 const svgString = Triangulator.generate(options);
@@ -136,3 +138,9 @@ Stroke color for all triangles as a hex string.
 
 #### strokeWidth
 Stroke width.
+
+#### strokeOnly
+Draw stroke only, no fill.
+
+#### backgroundColor
+Background color for the image (shown behind stroke in strokeOnly mode).

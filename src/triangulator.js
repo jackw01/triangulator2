@@ -74,6 +74,8 @@ const triangulator = {
       gradientPositiveFactor: 0.03,
       strokeColor: false,
       strokeWidth: false,
+      strokeOnly: false,
+      backgroundColor: '#000000',
     };
 
     // Non-global require is a bad practice but necessary here
@@ -158,6 +160,7 @@ const triangulator = {
     // Create SVG context and draw
     const draw = svg(options.svgInput);
     if (options.forceSVGSize) draw.size(options.width, options.height);
+    //draw.rect(options.width, options.height).fill(options.backgroundColor);
 
     // Reset rng after drawing points
     rng = seedrandom(`${options.seed}`);
@@ -195,7 +198,7 @@ const triangulator = {
       }
 
       draw.polygon(tris[i].map(p => p.join(',')).join(' '))
-        .fill(color)
+        .fill(options.strokeOnly ? options.backgroundColor : color)
         .stroke({ color: options.strokeColor || color, width: options.strokeWidth || 1 });
     }
 

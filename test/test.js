@@ -26,6 +26,8 @@ const svgString = Triangulator.generate({
   gradientPositiveFactor: 0.03,
   strokeColor: false,
   strokeWidth: false,
+  strokeOnly: false,
+  backgroundColor: '#000000',
 });
 
 console.log('writing...');

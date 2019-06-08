@@ -1,6 +1,5 @@
 const fs = require('fs');
 const window = require('svgdom');
-const svg2Img = require('svg2img');
 const Triangulator = require('../src/index.js');
 
 const svgString = Triangulator.generate({
@@ -31,14 +30,6 @@ const svgString = Triangulator.generate({
 });
 
 console.log('writing...');
-
-svg2Img(svgString, (err, buffer) => {
-  if (err) console.log(err);
-
-  fs.writeFile('out.png', buffer, (err) => {
-    if (err) console.log(err);
-  });
-});
 
 fs.writeFile('out.svg', svgString, (err) => {
   if (err) console.log(err);
